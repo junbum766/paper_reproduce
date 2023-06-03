@@ -6,7 +6,7 @@ model2 = Resnet50(1000)
 
 print("Resnet34 architecture: ")
 torchsummary.summary(model1, (3, 224, 224))
-print('-------------------------------------------------')
+print('######################################################')
 
 print("Resnet50 architecture: ")
 torchsummary.summary(model2, (3, 224, 224))

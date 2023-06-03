@@ -26,7 +26,7 @@ class Block(nn.Module):
         self.bn2 = nn.BatchNorm2d(output_dim)
         self.stride = stride
         self.downsampling = nn.Conv2d(
-            in_channels=input_dim, out_channels=output_dim * 2, kernel_size=1, stride=2
+            in_channels=input_dim, out_channels=output_dim, kernel_size=1, stride=2
         )
 
     def forward(self, x):
@@ -66,8 +66,8 @@ class Bottlececk(nn.Module):
         self.bn3 = nn.BatchNorm2d(output_dim * self.expansion)
         self.stride = stride
         self.downsampling = nn.Conv2d(
-            in_channels=input_dim * self.expansion,
-            out_channels=output_dim * 2,
+            in_channels=input_dim,
+            out_channels=output_dim * self.expansion,
             kernel_size=1,
             stride=2,
         )
@@ -98,6 +98,8 @@ class Resnet(nn.Module):
         self.conv1 = nn.Conv2d(
             in_channels=input_dim, out_channels=64, kernel_size=7, stride=2, padding=3
         )
+        self.bn = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU()
         self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.conv2 = self.conv_layer(
             block, 64, layer_list[0], True
@@ -107,17 +109,17 @@ class Resnet(nn.Module):
         self.conv5 = self.conv_layer(block, 512, layer_list[3])
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(in_features=512 * block.expansion, out_features=output_dim)
-        self.softmax = nn.Softmax(output_dim)
+        # self.softmax = nn.Softmax(output_dim)
 
     def forward(self, x):
-        x = self.conv1(x)
+        x = self.relu(self.bn(self.conv1(x)))
         x = self.conv2(self.max_pool(x))
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
         x = self.avg_pool(x)
         x = x.reshape(x.shape[0], -1)
-        x = self.softmax(self.fc(x))
+        x = self.fc(x)
         return x
 
     def conv_layer(self, block, dim, layer_num, is_conv2=False):
@@ -130,7 +132,8 @@ class Resnet(nn.Module):
                     layer.append(block(dim * block.expansion, dim, stride=1))
             else:
                 if i == 0:  # conv3 부터 첫 block은 downsampling을 해줘야 한다.
-                    layer.append(block(dim, dim, stride=2))
+                    input_dim = int(dim/2) # 각 block의 첫 input은 전 channel을 받는다.
+                    layer.append(block(input_dim * block.expansion, dim, stride=2)) 
                 else:
                     layer.append(block(dim * block.expansion, dim, stride=1))
         result = nn.Sequential(*layer)
@@ -146,12 +149,12 @@ def Resnet34(output_dim, input_dim=3):
 
 
 def Resnet50(output_dim, input_dim=3):
-    return Resnet(Block, output_dim, input_dim, [3, 4, 6, 3])
+    return Resnet(Bottlececk, output_dim, input_dim, [3, 4, 6, 3])
 
 
 def Resnet101(output_dim, input_dim=3):
-    return Resnet(Block, output_dim, input_dim, [3, 4, 23, 3])
+    return Resnet(Bottlececk, output_dim, input_dim, [3, 4, 23, 3])
 
 
 def Resnet152(output_dim, input_dim=3):
-    return Resnet(Block, output_dim, input_dim, [3, 8, 36, 3])
+    return Resnet(Bottlececk, output_dim, input_dim, [3, 8, 36, 3])
