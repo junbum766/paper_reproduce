@@ -1,8 +1,8 @@
 import torchsummary
 from resnet import Resnet34, Resnet50
 
-model1 = Resnet34(1000)
-model2 = Resnet50(1000)
+model1 = Resnet34(1000).cuda()
+model2 = Resnet50(1000).cuda()
 
 print("Resnet34 architecture: ")
 torchsummary.summary(model1, (3, 224, 224))
